@@ -8,7 +8,8 @@ Original file is located at
 """
 
 import xml.etree.ElementTree as ET
-tree = ET.parse('sumoTrace.txt')
+import re
+tree = ET.parse('fcdoutput.xml')
 root = tree.getroot()
 
 # 最上位階層のタグ・中身
@@ -17,20 +18,15 @@ root = tree.getroot()
 #for child in root:
 #    print(child.tag)
 #    print(child.attrib)
-i=0
-for vehicle in root.iter('vehicle'):
-    if(i>=100):
-      break
-    print(vehicle.attrib)
+
 
 import sys
 from xml.etree.ElementTree import iterparse
 import copy
 Ldict={}
-
+timewidth=10
 def SUMOTraceParser(FCDOutput):
     t=0
-    i=0
     dict1={}
     doc = iterparse(FCDOutput, events=('start', 'end'))
     # Skip the root element
@@ -38,33 +34,41 @@ def SUMOTraceParser(FCDOutput):
     for event, elem in doc:
         if event == 'start':
             if elem.tag == 'timestep':
-                if t != float(elem.attrib['time']):
-                   a=copy.copy(dict1)
-                   Ldict[t]=a
-                   dict1.clear()
-
+                if t != float(elem.attrib['time']) and (float(elem.attrib['time'])%timewidth)==0:
+                    a=copy.copy(dict1)
+                    Ldict[t]=a
+                    dict1.clear()
                 t = float(elem.attrib['time'])
-
+                
             elif elem.tag == 'vehicle':
                 lane =elem.attrib['lane']
+                lane=lane[:-2]
+                if(re.search('A',lane)):
+                    m=re.search('A',lane)
+                    lane=lane[:m.start()-1]
+                lane=re.sub(':','',lane)
+                if(re.search('-',lane)):
+                    lane=lane[1:]
                 if lane in dict1:
                   n=dict1[lane]
                   n=n+1
                   dict1[lane]=n
                 else:
                   dict1[lane]=1
-
-
-
+                
+                            
+                
         elif event == 'end':
             if elem.tag == 'timestep':
+                Ldict[float(elem.attrib['time'])]=dict1
                 elem.clear()
                 root.clear()
+
 
 ###
 if __name__=='__main__':
 
-    #FCDOutput = 'fcdoutput.xml'
-    FCDOutput = 'sumoTrace.txt'
+    FCDOutput = 'fcdoutput.xml'
+    #FCDOutput = 'sumoTrace.txt'
     SUMOTraceParser(FCDOutput)
-    print(Ldict)
+
